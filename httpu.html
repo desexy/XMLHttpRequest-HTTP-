@@ -234,23 +234,20 @@ if (typeof history.pushState == "function") {
             funFileUpload(fileArray[fileArray.indexOf(fileid) + 1]);
         };
         onpause = onpause || function() {
-            funFileUpload(fileArray[fileArray.indexOf(fileid) + 1]);
+
+            funFileUpload(fileArray[fileArray.indexOf(fileid)]);
         };
-        if (file.flagPause == true) {
+        if (file.flagPause == true) {//继续上传
             onpause.call(fileid);
             return;
         }
-
         objStateElement.wait(fileid);
-
         // 文件分割上传
         // 文件大小和分割起点
         // 注释的是本地存储实现
         var size = file.size; /*start = localStorage[fileid] * 1 || 0*/
-
         var start = jQuery('#filesize_'+fileid).val();//0;//$("filelist_" + fileid).filesize;
-       // alert(start);
-
+        //console.log(start);
         if (size == start) {
             // 已经传过了
             fileArray.shift();
@@ -260,8 +257,6 @@ if (typeof history.pushState == "function") {
             onsuccess.call(fileid, {});
             return;
         }
-
-
         var funFileSize = function() {
             if (file.flagPause == true) {
                 onpause.call(fileid);
@@ -282,6 +277,7 @@ if (typeof history.pushState == "function") {
             // 上传进度中
             xhr.upload.addEventListener("progress", function(e) {
                 objStateElement.backgroundSize(fileid, (parseInt(e.loaded) + parseInt(start)) / size * 100);
+                jQuery('#filesize_'+fileid).val(parseInt(e.loaded) + parseInt(start));
             }, false);
             // ajax成功后
             xhr.onreadystatechange = function(e) {
@@ -303,11 +299,17 @@ if (typeof history.pushState == "function") {
                         if (parseInt(start)+parseInt(fileSplitSize) >= size) {
                             // 超出，说明全部分割上传完毕
                             // 上传队列中清除者一项
+                            var nextid = fileArray[fileArray.indexOf(fileid) + 1];
+                            console.log(nextid);
+                            console.log(fileArray);
                             fileArray.shift();
                             if (delete fileArray[fileid]) console.log(fileArray.join() + "---上传成功");
                             objStateElement.success(fileid, now);
                             // 回调
-                            onsuccess.call(fileid, json);
+                            //onsuccess.call(nextid, json);
+                            //onpause.call(nextid, json);
+                            funFileUpload(fileArray[0]);
+                            //event.preventDefault();
                         } else {
                             // 尚未完全上传完毕
                             // 存储上传成功的文件点，以便出现意外的时候，下次可以断点续传
@@ -457,6 +459,7 @@ if (typeof history.pushState == "function") {
     // 文件删除等委托事件
     eleUploadUl.addEventListener("click", function(event) {
         var target = event.target, id = target && target.getAttribute("data-id");
+        //alert(id);alert(target.getAttribute("data-type"));
         if (id && /^a$/i.test(target.tagName)) {
             switch (target.getAttribute("data-type")) {
                 case "delete": {
@@ -488,8 +491,16 @@ if (typeof history.pushState == "function") {
                     }
                     break;
                 }
-                case "try": case "reupload": {
+                case "try": {
+                    funFileUpload(id, function() {}, function() {}, function() {});
+                    break;
+                }
+                case "reupload": {
+                    if (fileArray[id]) {
+                        fileArray[id].flagPause = false;
+                    }
                 funFileUpload(id, function() {}, function() {}, function() {});
+                    break;
             }
             }
         }
